@@ -165,11 +165,7 @@ namespace Multiplayer.Client
 
             foreach (Map map in Find.Maps)
             {
-                MapSetup.SetupMap(map);
-
-                AsyncTimeComp async = map.AsyncTime();
-                async.mapTicks = Find.TickManager.TicksGame;
-                async.SetDesiredTimeSpeed(Find.TickManager.CurTimeSpeed);
+                MapSetup.SetupMap(map, true);
             }
         }
 
