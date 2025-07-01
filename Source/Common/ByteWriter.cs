@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Multiplayer.Common.Util;
+using Verse;
 
 namespace Multiplayer.Common
 {
@@ -83,6 +85,22 @@ namespace Multiplayer.Common
             return this;
         }
 
+        public virtual void WriteEnum<T>(T value) where T : Enum
+        {
+            var values = typeof(T) == typeof(Enum) ? EnumCache.Values(value.GetType()) : EnumCache<T>.Values;
+            var index = Array.IndexOf(values, value);
+            switch (values.Length)
+            {
+                case <= byte.MaxValue:
+                    WriteByte((byte)index);
+                    break;
+                case <= ushort.MaxValue:
+                    WriteUShort((ushort)index);
+                    break;
+                default:
+                    throw new Exception($"Enum {value.GetType().FullName} has more than {ushort.MaxValue} values!");
+            }
+        }
         private void Write(object obj)
         {
             if (obj is int @int)
@@ -125,9 +143,9 @@ namespace Multiplayer.Common
             {
                 WritePrefixedBytes(bytes);
             }
-            else if (obj is Enum)
+            else if (obj is Enum enumObj)
             {
-                Write(Convert.ToInt32(obj));
+                WriteEnum(enumObj);
             }
             else if (obj is string @string)
             {
