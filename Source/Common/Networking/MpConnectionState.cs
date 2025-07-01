@@ -40,11 +40,12 @@ namespace Multiplayer.Common
 
                 if (method.GetParameters().Length != 1 || method.GetParameters()[0].ParameterType != typeof(ByteReader))
                     throw new Exception($"Bad packet handler signature for {method}");
+
                 if (packetHandlers[(int)state, (int)attr.packet] != null)
-                    throw new Exception($"Packet {state}:{attr.packet} already has a handler");
-                bool fragment = method.GetAttribute<IsFragmentedAttribute>() != null;
+                    throw new Exception($"Packet {state}:{type} already has a handler");
+
                 packetHandlers[(int)state, (int)attr.packet] =
-                    new PacketHandlerInfo(MethodInvoker.GetHandler(method), fragment);
+                    new PacketHandlerInfo(MethodInvoker.GetHandler(method), attr.allowFragmented);
             }
         }
     }
