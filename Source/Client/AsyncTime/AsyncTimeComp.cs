@@ -94,7 +94,7 @@ namespace Multiplayer.Client
         public TickList tickListLong = new(TickerType.Long);
 
         // Shared random state for ticking and commands
-        public ulong randState = 1;
+        public ulong randState;
 
         public Queue<ScheduledCommand> cmds = new();
 
@@ -102,6 +102,10 @@ namespace Multiplayer.Client
         {
             this.map = map;
             this.gameStartAbsTickMap = gameStartAbsTick;
+
+            // Use the world's constant rand seed and map tile ID as our initial randState.
+            // Only fill the seed part, leave the iterations out.
+            randState = (uint)Gen.HashCombineInt(map.uniqueID, Find.World.ConstantRandSeed);
         }
 
         public void Tick()
