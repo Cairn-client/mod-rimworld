@@ -131,7 +131,7 @@ namespace Multiplayer.Client.AsyncTime
         {
             if (PreDrawCalcMarker.calculating == null) return;
             if (Multiplayer.Client == null) return;
-            if (WorldRendererUtility.WorldRenderedNow) return;
+            if (WorldRendererUtility.WorldSelected) return;
 
             var map = PreDrawCalcMarker.calculating.Map ?? Find.CurrentMap;
             var asyncTime = map.AsyncTime();
