@@ -44,7 +44,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Multiplayer-beta
-        path: Multiplayer-beta.zip
+        path: Multiplayer
     
     - name: Clean up last release
       continue-on-error: true
