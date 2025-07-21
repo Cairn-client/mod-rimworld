@@ -35,7 +35,10 @@ jobs:
       run: dotnet build ${{ env.SLN_PATH }} --configuration Release --no-restore
 
     - name: Package files
-      run: zip -r Multiplayer-beta.zip About/ Assemblies/ AssembliesCustom/ Defs/ Languages/ Textures/ 
+      run: |
+        mkdir Multiplayer
+        mv About/ Assemblies/ AssembliesCustom/ Defs/ Languages/ Textures/ Multiplayer
+        zip -r Multiplayer-beta.zip Multiplayer/ 
 
     - name: Upload Mod Artifacts
       uses: actions/upload-artifact@v4
