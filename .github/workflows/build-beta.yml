@@ -36,15 +36,17 @@ jobs:
 
     - name: Package files
       run: |
-        mkdir Multiplayer
-        mv About/ Assemblies/ AssembliesCustom/ Defs/ Languages/ Textures/ Multiplayer
-        zip -r Multiplayer-beta.zip Multiplayer/ 
+        mkdir -p output/Multiplayer
+        mv About/ Assemblies/ AssembliesCustom/ Defs/ Languages/ Textures/ output/Multiplayer
+        cd output/
+        zip -r ../Multiplayer-beta.zip Multiplayer/
+        cd ../
 
     - name: Upload Mod Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Multiplayer-beta
-        path: Multiplayer
+        path: output/
     
     - name: Clean up last release
       continue-on-error: true
