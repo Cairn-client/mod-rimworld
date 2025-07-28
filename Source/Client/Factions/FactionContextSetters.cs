@@ -1,8 +1,8 @@
-using System;
-using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
+using System;
+using System.Collections.Generic;
 using Verse;
 
 namespace Multiplayer.Client.Factions;
@@ -26,13 +26,27 @@ static class MapGenFactionPatch
 {
     static void Prefix(PlanetTile tile)
     {
-        MapParent mapParent = Find.WorldObjects.MapParentAt(tile);
-        Faction factionToSet = mapParent?.Faction ?? TileFactionContext.GetFactionForTile(tile);
+        Faction factionToSet = GetFactionAt(tile);
 
         if (Multiplayer.Client != null && factionToSet == null)
             Log.Warning($"Couldn't set the faction context for map gen at {tile.tileId}: no world object and no stored faction.");
 
         FactionContext.Push(factionToSet);
+    }
+
+    private static Faction GetFactionAt(PlanetTile tile)
+    {
+        var worldObjectsHolder = Find.WorldObjects;
+
+        var mapParent = worldObjectsHolder.MapParentAt(tile);
+        if (mapParent != null)
+            return mapParent.Faction;
+
+        var caravan = worldObjectsHolder.PlayerControlledCaravanAt(tile);
+        if (caravan != null)
+            return caravan.Faction;
+
+        return TileFactionContext.GetFactionForTile(tile);
     }
 
     static void Finalizer()
