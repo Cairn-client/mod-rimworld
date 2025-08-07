@@ -62,20 +62,37 @@ namespace Multiplayer.Client
             {
                 var info = PlayerInfo.Read(data);
                 if (!Multiplayer.session.players.Contains(info))
+                {
+                    ServerLog.Log($"PlayerList: Adding player {info.id}:{info.username}");
                     Multiplayer.session.players.Add(info);
+                }
+                else
+                {
+                    ServerLog.Error($"PlayerList: Adding player {info.id}:{info.username} - player already exists");
+                }
             }
             else if (action == PlayerListAction.Remove)
             {
                 int id = data.ReadInt32();
-                Multiplayer.session.players.RemoveAll(p => p.id == id);
+                ServerLog.Log($"PlayerList: Removing player with id {id}");
+                var matches = Multiplayer.session.players.RemoveAll(p => p.id == id);
+                if (matches > 1)
+                {
+                    ServerLog.Error($"PlayerList: Removing player with id {id} -- occurred {matches} times. This should not happen");
+                }
             }
             else if (action == PlayerListAction.List)
             {
                 int count = data.ReadInt32();
+                ServerLog.Log($"PlayerList: Received player list with {count} entries");
 
                 Multiplayer.session.players.Clear();
                 for (int i = 0; i < count; i++)
-                    Multiplayer.session.players.Add(PlayerInfo.Read(data));
+                {
+                    var info = PlayerInfo.Read(data);
+                    ServerLog.Log($"PlayerList: Adding player from list {info.id}:{info.username}");
+                    Multiplayer.session.players.Add(info);
+                }
             }
             else if (action == PlayerListAction.Latencies)
             {
@@ -83,7 +100,13 @@ namespace Multiplayer.Client
 
                 for (int i = 0; i < count; i++)
                 {
-                    var player = Multiplayer.session.players[i];
+                    var id = data.ReadInt32();
+                    var player = Multiplayer.session.GetPlayerInfo(id);
+                    if (player == null)
+                    {
+                        ServerLog.Log($"PlayerList: Received latency info for unknown player with id {id}");
+                        continue;
+                    }
                     player.latency = data.ReadInt32();
                     player.ticksBehind = data.ReadInt32();
                     player.simulating = data.ReadBool();
@@ -96,8 +119,14 @@ namespace Multiplayer.Client
                 var status = data.ReadEnum<PlayerStatus>();
                 var player = Multiplayer.session.GetPlayerInfo(id);
 
-                if (player != null)
+                if (player == null)
+                {
+                    ServerLog.Log($"PlayerList: Received player status ({status}) for unknown player with id {id}");
+                }
+                else
+                {
                     player.status = status;
+                }
             }
         }
 
@@ -205,7 +234,9 @@ namespace Multiplayer.Client
             string key = data.ReadString();
             string[] args = data.ReadPrefixedStrings();
 
-            Messages.Message(key.Translate(Array.ConvertAll(args, s => (NamedArgument)s)), MessageTypeDefOf.SilentInput, false);
+            var msg = key.Translate(Array.ConvertAll(args, s => (NamedArgument)s));
+            Messages.Message(msg, MessageTypeDefOf.SilentInput, false);
+            ServerLog.Log($"Notification: {msg} ({key}, {args.Join(", ")})");
         }
 
         [PacketHandler(Packets.Server_SyncInfo, allowFragmented: true)]
