@@ -305,10 +305,16 @@ namespace Multiplayer.Client
             Assembly.GetCallingAssembly().GetTypes().Do(type => {
                 // EarlyPatches are handled in MultiplayerMod.EarlyPatches
                 if (type.IsDefined(typeof(EarlyPatchAttribute))) return;
+                
+                var harmonyAttributes = HarmonyMethodExtensions.GetFromType(type);
+			    if (harmonyAttributes is null || harmonyAttributes.Count == 0) return;
 
-                try {
+                try
+                {
                     harmony.CreateClassProcessor(type).Patch();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     LogError($"FAIL: {type} with {e}");
                 }
             });
