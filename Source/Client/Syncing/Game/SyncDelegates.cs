@@ -135,6 +135,9 @@ namespace Multiplayer.Client
 
             SyncMethod.Lambda(typeof(CompNeuralSupercharger), nameof(CompNeuralSupercharger.CompGetGizmosExtra), 1); // Neural supercharger: allow temporary pawns to use
 
+            SyncMethod.Lambda(typeof(CompPilotConsole), nameof(CompPilotConsole.CompGetGizmosExtra), 0); // Launch instantly
+            SyncMethod.Lambda(typeof(CompPilotConsole), nameof(CompPilotConsole.CompGetGizmosExtra), 1); // Reset cooldown
+
             // Biosculpter pod
             SyncMethod.Lambda(typeof(CompBiosculpterPod), nameof(CompBiosculpterPod.CompGetGizmosExtra), 1);                // Interrupt cycle (eject contents)
             SyncMethod.Lambda(typeof(CompBiosculpterPod), nameof(CompBiosculpterPod.CompGetGizmosExtra), 3);                // Toggle auto load nutrition

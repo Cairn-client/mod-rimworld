@@ -1,15 +1,19 @@
+using HarmonyLib;
 using Multiplayer.API;
+using Multiplayer.Client.Patches;
 using Multiplayer.Common;
 using RimWorld;
 using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using Verse;
 using Verse.AI;
 using Verse.AI.Group;
 using static Multiplayer.Client.CompSerialization;
 using static Multiplayer.Client.SyncSerialization;
+using static UnityEngine.GraphicsBuffer;
 // ReSharper disable RedundantLambdaParameterType
 
 namespace Multiplayer.Client
@@ -664,6 +668,25 @@ namespace Multiplayer.Client
                         build.sourcePrecept = sync.Read<Precept_Building>();
                     }
                 }
+            },
+            {
+                (SyncWorker sync, ref Designator_MoveGravship moveGravship) => {
+                    if (sync.isWriting)
+                        sync.Write(moveGravship.marker.GravshipRotation);
+                    else
+                    {
+                        var rot = sync.Read<Rot4>();
+
+                        var gravController = Find.GravshipController;
+                        var marker = gravController.landingMarker;
+
+                        if (marker != null)
+                            marker.GravshipRotation = rot;
+
+                        moveGravship = gravController.moveDesignator;
+                        moveGravship.deselectedRotation = moveGravship.marker.GravshipRotation;
+                    }
+                }, true, false
             },
             {
                 (ByteWriter data, DesignationManager manager) =>
