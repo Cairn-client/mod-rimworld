@@ -6,183 +6,77 @@ using RimWorld;
 using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using UnityEngine;
 using Verse;
 using Verse.Sound;
 
 namespace Multiplayer.Client.Patches
 {
     #region Input
-    // Prelaunch & confirmation Input
+
     [HarmonyPatch(typeof(GravshipUtility), nameof(GravshipUtility.PreLaunchConfirmation))]
-    public static class Patch_GravshipPreLaunchConfirmation
+    public static class PatchGravshipPreLaunchConfirmation
     {
-        private static string GravshipDialogPrefix => "ConfirmGravEngineLaunch".Translate().RawText;
-
-        static bool Prefix(Building_GravEngine engine, ref Action launchAction)
+        static void Prefix(Building_GravEngine engine, ref Action launchAction)
         {
-            if (Multiplayer.Client == null) return true;
+            if (Multiplayer.Client == null) return;
 
-            PlanetTile tile = engine.Map.Tile;
-
-            if (GravshipTravelSessionUtils.HasSessionAt(tile))
-            {
-                // If a session already exists, we don't need to show the dialog again
-                MpLog.Debug($"[MP] [{Multiplayer.AsyncWorldTime.worldTicks}] Patch_GravshipPreLaunchConfirmation: Session already exists for tile {engine.Map.Tile}, skipping dialog.");
-                return true;
-            }
-
-            GravshipTravelSessionUtils.OpenSessionAt(tile);
-
-            launchAction = () =>
-            {
-                SyncGravshipDialogOK(engine);
-            };
-
-            return true;
-        }
-
-        [SyncMethod]
-        public static void SyncGravshipDialogOK(Building_GravEngine engine)
-        {
-            CloseGravshipDialog();
-
-            CompPilotConsole pilotConsole = engine.GravshipComponents.OfType<CompPilotConsole>().FirstOrDefault();
-            if (pilotConsole == null)
-            {
-                MpLog.Error($"[MP] No pilot console found for gravship engine {engine.def.defName}");
-                return;
-            }
-
-            pilotConsole?.StartChoosingDestination();
-        }
-
-        public static void CloseGravshipDialog()
-        {
-            Dialog_MessageBox dialog = Find.WindowStack.Windows
-                .OfType<Dialog_MessageBox>()
-                .FirstOrDefault(w => w.text.RawText.StartsWith(GravshipDialogPrefix));
-            dialog?.Close();
+            GravshipTravelUtils.OpenSessionAt(engine.Map.Tile);
         }
     }
 
-    // Dialog cancel Input
-    [HarmonyPatch(typeof(Dialog_MessageBox), MethodType.Constructor,
-        [typeof(TaggedString), typeof(string), typeof(Action), typeof(string), typeof(Action),
-         typeof(string), typeof(bool), typeof(Action), typeof(Action), typeof(WindowLayer)])]
-    public static class Patch_GravshipPreLaunchCancel
+    [HarmonyPatch(typeof(Dialog_MessageBox), MethodType.Constructor, [typeof(TaggedString), typeof(string), typeof(Action), typeof(string), typeof(Action), typeof(string), typeof(bool), typeof(Action), typeof(Action), typeof(WindowLayer)])]
+    public static class PatchGravshipPreLaunchCancel
     {
-        private static string GravshipDialogPrefix => "ConfirmGravEngineLaunch".Translate().RawText;
         static void Postfix(Dialog_MessageBox __instance)
         {
             if (Multiplayer.Client == null) return;
-            if (__instance.text.RawText.StartsWith(GravshipDialogPrefix))
-            {
-                __instance.buttonBAction = () =>
-                {
-                    GravshipTravelSessionUtils.SyncCloseSession(Find.CurrentMap.Tile);
-                    SyncGravshipDialogCancel();
-                };
-            }
-        }
+            if (!GravshipTravelUtils.IsGravShipMessageDialog(__instance)) return;
 
-        [SyncMethod]
-        public static void SyncGravshipDialogCancel()
-        {
-            Patch_GravshipPreLaunchConfirmation.CloseGravshipDialog();
+            __instance.buttonBAction = () =>
+            {
+                GravshipTravelUtils.SyncCloseSession(Find.CurrentMap.Tile);
+                GravshipTravelUtils.SyncGravshipDialogCancel();
+            };
         }
     }
 
     [HarmonyPatch(typeof(CompPilotConsole), nameof(CompPilotConsole.StartChoosingDestination))]
-    public static class Patch_CompPilotConsole_StartChoosingDestination
+    public static class PatchPilotConsoleStartChoosingDestination
     {
-        public static PlanetTile? initialTile;
-        static bool Prefix(CompPilotConsole __instance)
-        {
-            if (Multiplayer.Client == null) return true;
-
-            GravshipTravelSessionUtils.OpenSessionAt(__instance.engine.Map.Tile);
-
-            initialTile = __instance.parent.Map.Tile;
-            return true;
-        }
-    }
-
-    // Tile confirmation input
-    [HarmonyPatch(typeof(SettlementProximityGoodwillUtility), nameof(SettlementProximityGoodwillUtility.CheckConfirmSettle))]
-    public static class Patch_SettlementProximityGoodwillUtility_CheckConfirmSettle
-    {
-        static bool Prefix(PlanetTile tile, ref Action settleAction, Action cancelAction = null, Building_GravEngine gravEngine = null)
-        {
-            if (Multiplayer.Client == null) return true;
-            if (gravEngine == null) return true;
-
-            settleAction = () => SyncGravshipTileConfirm(gravEngine, tile);
-            return true;
-        }
-
-        [SyncMethod]
-        public static void SyncGravshipTileConfirm(Building_GravEngine engine, PlanetTile planetTile)
-        {
-            MpLog.Debug($"[MP] [{Multiplayer.AsyncWorldTime.worldTicks}] Patch_SettlementProximityGoodwillUtility_CheckConfirmSettle: Confirming settlement for tile {planetTile} with gravship engine {engine.def.defName}.");
-            // Run the same logic as the original confirmation delegate
-            WorldComponent_GravshipController.DestroyTreesAroundSubstructure(engine.Map, engine.ValidSubstructure);
-            Find.World.renderer.wantedMode = WorldRenderMode.None;
-            engine.ConsumeFuel(planetTile);
-            Find.GravshipController.InitiateTakeoff(engine, planetTile);
-            SoundDefOf.Gravship_Launch.PlayOneShotOnCamera();
-            Patch_CompPilotConsole_StartChoosingDestination.initialTile = null;
-
-            ClearTilePickerForNonIssuer();
-        }
-
-        private static void ClearTilePickerForNonIssuer()
-        {
-            if (!TickPatch.currentExecutingCmdIssuedBySelf)
-            {
-                Find.TilePicker.StopTargetingInt();
-                Event.current.Use();
-            }
-        }
-    }
-
-    //Tile cancel input
-    [HarmonyPatch(typeof(TilePicker), nameof(TilePicker.StopTargeting))]
-    public static class Patch_TilePicker_StopTargeting
-    {
-        static void Prefix(TilePicker __instance)
+        static void Postfix(CompPilotConsole __instance)
         {
             if (Multiplayer.Client == null) return;
-            if (!__instance.forGravship) return;
-            if (Multiplayer.ExecutingCmds) return;
+            if (!Multiplayer.ExecutingCmds) return;
 
-            if (!Patch_CompPilotConsole_StartChoosingDestination.initialTile.HasValue)
-            {
-                MpLog.Error("[MP] Patch_TilePicker_StopTargeting: initialTile is null, cannot close gravship session.");
-                return;
-            }
-
-            GravshipTravelSessionUtils.SyncCloseSession(Patch_CompPilotConsole_StartChoosingDestination.initialTile.Value);
-            SyncStopTargeting();
-        }
-
-        [SyncMethod]
-        static void SyncStopTargeting()
-        {
-            TilePicker tilePicker = Find.TilePicker;
-
-            Find.World.renderer.wantedMode = WorldRenderMode.None;
-
-            tilePicker.StopTargeting();
-
-            Patch_CompPilotConsole_StartChoosingDestination.initialTile = null;
+            GravshipTravelUtils.CloseGravshipDialog();
+            GravshipTravelUtils.OpenSessionAt(__instance.engine.Map.Tile);
         }
     }
 
     [HarmonyPatch]
-    public static class Patch_GravshipLandingPause
+    static class PatchTilePickerCancelLambda
+    {
+        static MethodBase TargetMethod()
+        {
+            return MpMethodUtil.GetLambda(typeof(CompPilotConsole), nameof(CompPilotConsole.StartChoosingDestination), lambdaOrdinal: 4);
+        }
+
+        // TODO: Something in Feedback.cs seems to block the wantedMode switch.
+        // For now, it's set manually - consider keeping it this way permanently.
+        static void Finalizer()
+        {
+            if (Multiplayer.Client == null) return;
+            if (!Multiplayer.ExecutingCmds) return;
+
+            Find.World.renderer.wantedMode = WorldRenderMode.None;
+            Find.TilePicker.StopTargetingInt();
+            GravshipTravelUtils.CloseSessionAt(Find.CurrentMap.Tile);
+        }
+    }
+
+    [HarmonyPatch]
+    public static class PatchGravshipMapArriveMethods
     {
         static IEnumerable<MethodBase> TargetMethods()
         {
@@ -191,20 +85,23 @@ namespace Multiplayer.Client.Patches
         }
         static void Postfix(Gravship gravship)
         {
-            GravshipTravelSessionUtils.OpenSessionAt(gravship.destinationTile);
+            if (Multiplayer.Client == null) return;
+
+            GravshipTravelUtils.OpenSessionAt(gravship.destinationTile);
         }
     }
 
     [HarmonyPatch(typeof(Designator_MoveGravship), nameof(Designator_MoveGravship.DesignateSingleCell))]
-    public static class HandleDesignatorDeselectForAllClients
+    public static class PatchGravshipDesignatorDeselectForAllClients
     {
         static void Prefix() => CancelDesignatorDeselection.EnableCanceling();
 
         static void Finalizer() => CancelDesignatorDeselection.DisableCanceling();
     }
 
+    // TODO: Is there a better way to synchronize this method?
     [HarmonyPatch(typeof(GravshipLandingMarker), nameof(GravshipLandingMarker.BeginLanding))]
-    public static class SyncLandingComfirmationButtonPressed
+    public static class PatchBeginLandingToSyncWithClients
     {
         static bool Prefix(GravshipLandingMarker __instance)
         {
@@ -237,14 +134,14 @@ namespace Multiplayer.Client.Patches
     }
 
     [HarmonyPatch(typeof(WorldComponent_GravshipController), nameof(WorldComponent_GravshipController.AbortLanding))]
-    public static class CloseSessionOnAbortLanding
+    public static class PatchAbortLandingToCloseSession
     {
         static void Prefix(WorldComponent_GravshipController __instance, ref bool __state)
         {
             if (Multiplayer.Client == null) return;
             if (!Multiplayer.ExecutingCmds) return;
 
-            GravshipTravelSessionUtils.CloseSessionAt(__instance.landingTile);
+            GravshipTravelUtils.CloseSessionAt(__instance.landingTile);
         }
     }
 
@@ -253,7 +150,7 @@ namespace Multiplayer.Client.Patches
     #region Landing/Takeoff freeze
 
     [HarmonyPatch]
-    public static class FreezeGameForLandingAndTakeOff
+    public static class PatchGravshipCutsceneToFreeze
     {
         static IEnumerable<MethodBase> TargetMethods()
         {
@@ -265,24 +162,25 @@ namespace Multiplayer.Client.Patches
         {
             if (Multiplayer.Client == null) return;
 
-            Multiplayer.Client.Send(Common.Packets.Client_Freeze, [true]);
+            GravshipTravelUtils.StartFreeze();
         }
     }
 
     [HarmonyPatch(typeof(WorldComponent_GravshipController), nameof(WorldComponent_GravshipController.TakeoffEnded))]
-    public static class Patch_GravshipTakeoffEnded
+    public static class PatchGravshipTakeoffEnded
     {
         static void Prefix(WorldComponent_GravshipController __instance)
         {
             if (Multiplayer.Client == null) return;
 
-            Multiplayer.Client.Send(Common.Packets.Client_Freeze, [false]);
-            GravshipTravelSessionUtils.CloseSessionAt(__instance.takeoffTile);
+            GravshipTravelUtils.StopFreeze();
+            GravshipTravelUtils.CloseSessionAt(__instance.takeoffTile);
         }
     }
 
+    // TODO: Is the random pushing here necessary? This might be related to issue #638.
     [HarmonyPatch(typeof(WorldComponent_GravshipController), nameof(WorldComponent_GravshipController.LandingEnded))]
-    public static class WorldComponent_GravshipController_LandingEnded_Patch
+    public static class PatchGravshipLandingEnded
     {
         static void Prefix(WorldComponent_GravshipController __instance)
         {
@@ -291,9 +189,8 @@ namespace Multiplayer.Client.Patches
             Rand.PushState();
             Rand.StateCompressed = __instance.map.AsyncTime().randState;
 
-            Multiplayer.Client.Send(Common.Packets.Client_Freeze, [false]);
-
-            GravshipTravelSessionUtils.CloseSessionAt(__instance.gravship.destinationTile);
+            GravshipTravelUtils.StopFreeze();
+            GravshipTravelUtils.CloseSessionAt(__instance.gravship.destinationTile);
         }
         
         static void Finalizer()
@@ -304,9 +201,10 @@ namespace Multiplayer.Client.Patches
     }
     #endregion
 
+    // TODO: Check what this actually does and whether it’s still necessary
     // Stop the landing co message from showing every game tick
     [HarmonyPatch(typeof(TickManager), nameof(TickManager.PlayerCanControl), MethodType.Getter)]
-    public static class TickManager_PlayerCanControl_Patch
+    public static class PatchTickmanagerPlayerCanControlGetter
     {
         private static bool shownLandingMessage = false;
 

@@ -30,11 +30,11 @@ public class GravshipTravelSession : Session
 
     public override void PostRemoveSession()
     {
-        TickManager_PlayerCanControl_Patch.ResetLandingMessageFlag();
+        PatchTickmanagerPlayerCanControlGetter.ResetLandingMessageFlag();
     }
 }
 
-public static class GravshipTravelSessionUtils
+public static class GravshipTravelUtils
 {
     public static void OpenSessionAt(PlanetTile tile)
     {
@@ -80,6 +80,39 @@ public static class GravshipTravelSessionUtils
     {
         return TryGetSessionAt(takeoffTile, out _);
     }
+
+    public static void StartFreeze()
+    {
+        SetFreeze(true);
+    }
+
+    public static void StopFreeze()
+    {
+        SetFreeze(false);
+    }
+
+    private static void SetFreeze(bool value)
+    { 
+    
+        Multiplayer.Client.Send(Common.Packets.Client_Freeze, [value]);
+    }
+    private static string GravshipDialogPrefix => "ConfirmGravEngineLaunch".Translate().RawText;
+
+    // TODO: Try to find a better solution for that
+    public static void CloseGravshipDialog()
+    {
+        Dialog_MessageBox dialog = Find.WindowStack.Windows
+            .OfType<Dialog_MessageBox>()
+            .FirstOrDefault(w => w.text.RawText.StartsWith(GravshipDialogPrefix));
+        dialog?.Close();
+    }
+    public static bool IsGravShipMessageDialog(Dialog_MessageBox messageBox)
+    {
+        return messageBox.text.RawText.StartsWith(GravshipDialogPrefix);
+    }
+
+    [SyncMethod]
+    public static void SyncGravshipDialogCancel() => CloseGravshipDialog();
 
     [SyncMethod]
     public static void SyncCloseSession(PlanetTile tile) => CloseSessionAt(tile);
