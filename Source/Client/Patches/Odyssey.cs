@@ -1,4 +1,5 @@
 using HarmonyLib;
+using RimWorld;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -30,6 +31,27 @@ namespace Multiplayer.Client.Patches
 
             return Gen.HashCombineInt(body.map?.uniqueID ?? 0, body.rootCell.x, body.rootCell.z, (int)body.waterBodyType);
         }
+    }
 
+
+    [HarmonyPatch(typeof(CompStatue), nameof(CompStatue.InitFakePawn))]
+    public static class PatchInitFakePawnToNotSyncPawnName
+    {
+        static void Prefix(ref bool __state)
+        {
+            if (Multiplayer.Client == null) return;
+
+            if(!Multiplayer.dontSync)
+            {
+                Multiplayer.dontSync = true;
+                __state = true;
+            }
+        }
+
+        static void Finalizer(bool __state)
+        {
+            if (__state)
+                Multiplayer.dontSync = false;
+        }
     }
 }
