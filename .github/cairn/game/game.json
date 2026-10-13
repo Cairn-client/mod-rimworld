@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "rimworld",
+  "name": "RimWorld",
+  "developer": "Ludeon Studios",
+  "franchise": "RimWorld",
+  "steamAppId": 294100,
+  "exe": "RimWorldWin64.exe",
+  "description": "Run one colony together. The RimWorld Multiplayer mod keeps every player on the same map and the same clock: the same colonists, jobs, fights and events, with everyone giving orders at once.",
+  "accent": "#C9A14A",
+  "images": {
+    "background": "rimworld.jpg",
+    "logo": "rimworld-logo.png",
+    "hero": "rimworld-hero.jpg",
+    "poster": "rimworld-poster.jpg",
+    "screenshots": [ "rimworld-shot-1.jpg", "rimworld-shot-2.jpg" ]
+  },
+  "ownSession": true,
+  "setup": [
+    { "kind": "steam-running" },
+    { "kind": "steam-app", "appId": 294100, "title": "RimWorld", "detail": "Install RimWorld from your Steam library." },
+    { "kind": "game-found" },
+    { "kind": "mod-installed", "detail": "Download the mod above: Cairn puts it, and Prepatcher which it needs, in the game's Mods folder." }
+  ],
+  "hostSteps": [
+    "Download the mod above. Cairn puts Multiplayer and Prepatcher in the game's Mods folder and keeps them up to date.",
+    "Press Play, open Mods and switch on Prepatcher, then Multiplayer, right below the game and its expansions. If you also subscribed to them on the Steam Workshop, unsubscribe so they are not loaded twice.",
+    "Start your colony. In the game choose Host a game and share the address with your friends."
+  ],
+  "joinSteps": [
+    "Download the mod above, the same version as the host's, then press Play.",
+    "Open Mods and switch on Prepatcher, then Multiplayer, right below the game and its expansions.",
+    "In the main menu choose Multiplayer, connect to the host's address and join the colony."
+  ],
+  "features": [
+    { "title": "Sessions", "items": [
+      { "name": "Host and join", "detail": "Host a colony and let friends join it by address. Everyone needs the same version of the mod and the same mods in the same order.", "status": "inTest" },
+      { "name": "Kept up to date", "detail": "Cairn installs the mod and the library it needs in the game's Mods folder and updates them when a new version is released." }
+    ] },
+    { "title": "Colony", "items": [
+      { "name": "One map, one clock", "detail": "The same map, time and random events for every player, kept in step.", "status": "inTest" },
+      { "name": "Orders and combat", "detail": "Jobs, building, drafting and fights are shared as they happen.", "status": "inTest" }
+    ] }
+  ]
+}
