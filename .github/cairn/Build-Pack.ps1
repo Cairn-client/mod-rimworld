@@ -63,7 +63,7 @@ foreach ($n in 'About', 'Assemblies', 'LoadFolders.xml', 'LICENSE') {
     Copy-Item $src $pp -Recurse
 }
 
-foreach ($n in @('Mods\Multiplayer\About\About.xml', 'Mods\Multiplayer\1.6\Assemblies\Multiplayer.dll', 'Mods\Multiplayer\LoadFolders.xml', 'Mods\Prepatcher\Assemblies\PrepatcherImpl.dll', 'Mods\Prepatcher\About\About.xml')) {
+foreach ($n in @('Mods\Multiplayer\About\About.xml', 'Mods\Multiplayer\1.6\AssembliesCustom\Multiplayer.dll', 'Mods\Multiplayer\LoadFolders.xml', 'Mods\Prepatcher\Assemblies\PrepatcherImpl.dll', 'Mods\Prepatcher\About\About.xml')) {
     if (-not (Test-Path (Join-Path $mod $n))) { throw "the pack is missing $n" }
 }
 
